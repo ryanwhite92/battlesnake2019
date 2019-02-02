@@ -20,21 +20,39 @@ app.use(bodyParser.json())
 app.use(poweredByHandler)
 
 // --- SNAKE LOGIC GOES BELOW THIS LINE ---
-function calcMove({ board: { food }, you: { body }}) {
+function calcMove({ board: { width, height, food }, you: { body }}) {
   const snakeHead = body[0];
-  const target = findClosestFood(snakeHead, food);
-  const xDiff = snakeHead.x - target.x;
-  const yDiff = snakeHead.y - target.y;
+  const moves = [
+    { x: snakeHead.x, y: snakeHead.y + 1 },
+    { x: snakeHead.x, y: snakeHead.y - 1 },
+    { x: snakeHead.x + 1, y: snakeHead.y },
+    { x: snakeHead.x - 1, y: snakeHead.y },
+  ];
+  const possibleMoves = moves.filter((move) => {
+    if (move.x < 0 || move.x >= width || move.y < 0 || move.y >= height) {
+      return false;
+    }
+    if (move.x == body[1].x && move.y == body[1].y) {
+      return false;
+    }
+    return move;
+  });
+
+  const target = findShortestPath(snakeHead, food);           // find closest food node
+  const nextMove = findShortestPath(target, possibleMoves);   // find move resulting in shortest path to get to target node
   
-  if (xDiff > 0) return 'left';
-  if (xDiff < 0) return 'right';
-  if (yDiff > 0) return 'up';
-  if (yDiff < 0) return 'down';
+  const xDir = snakeHead.x - nextMove.x;                      // determine x direction (left/right)
+  const yDir = snakeHead.y - nextMove.y;                      // determine y direction (up/down)
+
+  if (xDir > 0) return 'left';
+  if (xDir < 0) return 'right';
+  if (yDir > 0) return 'up';
+  if (yDir < 0) return 'down';
 }
 
-function findClosestFood(snakeHead, food) {
-  const distances = food.map((food) => {
-    return Math.abs(snakeHead.x - food.x) + Math.abs(snakeHead.y - food.y);
+function findShortestPath(snakeHead, arr) {
+  const distances = arr.map((item) => {
+    return Math.abs(snakeHead.x - item.x) + Math.abs(snakeHead.y - item.y);
   });
 
   let min = null;
@@ -43,8 +61,9 @@ function findClosestFood(snakeHead, food) {
       min = distances[i];
     }
   }
+
   const idx = distances.indexOf(min);
-  return food[idx];
+  return arr[idx];
 }
 
 // Handle POST request to '/start'
