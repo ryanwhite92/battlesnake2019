@@ -32,9 +32,14 @@ function calcMove({ board: { width, height, food }, you: { body }}) {
     if (move.x < 0 || move.x >= width || move.y < 0 || move.y >= height) {
       return false;
     }
-    if (move.x == body[1].x && move.y == body[1].y) {
-      return false;
+
+    // check that snake won't collide w/ its own tail
+    for (let i = 1; i < body.length; i++) {
+      if (move.x == body[i].x && move.y == body[i].y) {
+        return false;
+      }
     }
+    
     return move;
   });
 
