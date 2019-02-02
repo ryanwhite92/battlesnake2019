@@ -23,13 +23,18 @@ app.use(poweredByHandler)
 function calcMove({ board: { food }, you: { body }}) {
   const snakeHead = body[0];
   const target = findClosestFood(snakeHead, food);
+  const xDiff = snakeHead.x - target.x;
+  const yDiff = snakeHead.y - target.y;
   
-  return 'up';
+  if (xDiff > 0) return 'left';
+  if (xDiff < 0) return 'right';
+  if (yDiff > 0) return 'up';
+  if (yDiff < 0) return 'down';
 }
 
 function findClosestFood(snakeHead, food) {
   const distances = food.map((food) => {
-    return Math.abs((snakeHead.x - food.x) + (snakeHead.y - food.y));
+    return Math.abs(snakeHead.x - food.x) + Math.abs(snakeHead.y - food.y);
   });
 
   let min = null;
