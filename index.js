@@ -21,10 +21,26 @@ app.use(bodyParser.json())
 app.use(poweredByHandler)
 
 // --- SNAKE LOGIC GOES BELOW THIS LINE ---
-function calcMove({ board: { width, height, food, snakes }, you: { body } }) {
-  const snakeHead = body[0];
+function calcMove({ board, you }) {
+  const snakeHead = you.body[0];
+
+  const possibleMoves = getPossibleMoves(snakeHead, board, you);
+  const target = findShortestPath(snakeHead, board.food);               // find closest food node
+  const nextMove = findShortestPath(target, possibleMoves);             // find move resulting in shortest path to get to target node
+  
+  const xDir = snakeHead.x - nextMove.x;                                // determine x direction (left/right)
+  const yDir = snakeHead.y - nextMove.y;                                // determine y direction (up/down)
+
+  if (xDir > 0) return 'left';
+  if (xDir < 0) return 'right';
+  if (yDir > 0) return 'up';
+  if (yDir < 0) return 'down';
+}
+
+function getPossibleMoves(snakeHead, board, you) {
+  const { width, height, snakes } = board;
   const otherSnakes = snakes.filter((snake) => {
-    if (!util.isDeepStrictEqual(body, snake.body)) return snake;
+    if (!util.isDeepStrictEqual(you.body, snake.body)) return snake;
   });
 
   const moves = [
@@ -33,17 +49,19 @@ function calcMove({ board: { width, height, food, snakes }, you: { body } }) {
     { x: snakeHead.x + 1, y: snakeHead.y },
     { x: snakeHead.x - 1, y: snakeHead.y },
   ];
-  const possibleMoves = moves.filter((move) => {
+  
+  return moves.filter((move) => {
+    // Remove moves that fall outside of board boundaries
     if (move.x < 0 || move.x >= width || move.y < 0 || move.y >= height) {
       return false;
     }
-
-    for (let i = 1; i < body.length; i++) {
-      if (move.x == body[i].x && move.y == body[i].y) {
+    // Remove moves that would result in self-collisions
+    for (let i = 1; i < you.body.length; i++) {
+      if (move.x == you.body[i].x && move.y == you.body[i].y) {
         return false;
       }
     }
-
+    // Remove moves that would result in collisions with other snakes
     if (otherSnakes.length > 0) {
       for (let i = 0; i < otherSnakes.length; i++) {
         for (let j = 0; j < otherSnakes[i].body.length; j++) {
@@ -56,17 +74,6 @@ function calcMove({ board: { width, height, food, snakes }, you: { body } }) {
     
     return move;
   });
-
-  const target = findShortestPath(snakeHead, food);           // find closest food node
-  const nextMove = findShortestPath(target, possibleMoves);   // find move resulting in shortest path to get to target node
-  
-  const xDir = snakeHead.x - nextMove.x;                      // determine x direction (left/right)
-  const yDir = snakeHead.y - nextMove.y;                      // determine y direction (up/down)
-
-  if (xDir > 0) return 'left';
-  if (xDir < 0) return 'right';
-  if (yDir > 0) return 'up';
-  if (yDir < 0) return 'down';
 }
 
 function findShortestPath(snakeHead, arr) {
