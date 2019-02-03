@@ -8,6 +8,7 @@ const {
   genericErrorHandler,
   poweredByHandler
 } = require('./handlers.js')
+const util = require('util');
 
 // For deployment to Heroku, the port needs to be set using ENV, so
 // we check for the port number in process.env
@@ -20,8 +21,12 @@ app.use(bodyParser.json())
 app.use(poweredByHandler)
 
 // --- SNAKE LOGIC GOES BELOW THIS LINE ---
-function calcMove({ board: { width, height, food }, you: { body }}) {
+function calcMove({ board: { width, height, food, snakes }, you: { body } }) {
   const snakeHead = body[0];
+  const otherSnakes = snakes.filter((snake) => {
+    if (!util.isDeepStrictEqual(body, snake.body)) return snake;
+  });
+
   const moves = [
     { x: snakeHead.x, y: snakeHead.y + 1 },
     { x: snakeHead.x, y: snakeHead.y - 1 },
@@ -33,10 +38,19 @@ function calcMove({ board: { width, height, food }, you: { body }}) {
       return false;
     }
 
-    // check that snake won't collide w/ its own tail
     for (let i = 1; i < body.length; i++) {
       if (move.x == body[i].x && move.y == body[i].y) {
         return false;
+      }
+    }
+
+    if (otherSnakes.length > 0) {
+      for (let i = 0; i < otherSnakes.length; i++) {
+        for (let j = 0; j < otherSnakes[i].body.length; j++) {
+          if (move.x == otherSnakes[i].body[j].x && move.y == otherSnakes[i].body[j].y) {
+            return false;
+          }
+        }
       }
     }
     
