@@ -41,15 +41,30 @@ function samePoint(pointA, pointB) {
   return pointA.x === pointB.x && pointA.y === pointB.y;
 }
 
-function getPossibleDirections({ body }) {
-  const snakeHead = body[0];
+// Remove moves that fall outside of board (grid) boundaries
+function insideGrid(move, { height, width }) {
+  return move.x >= 0 && move.x < width && move.y >= 0 && move.y < height;
+}
+
+// Return possible moves within board boundary
+function getPossibleDirections(board, you) {
+  const snakeHead = you.body[0];
   const moves = [
     { x: snakeHead.x, y: snakeHead.y + 1 },
     { x: snakeHead.x, y: snakeHead.y - 1 },
     { x: snakeHead.x + 1, y: snakeHead.y },
     { x: snakeHead.x - 1, y: snakeHead.y },
   ];
-  return moves;
+
+  return moves.filter((move) => insideGrid(move, board) ? move : false );
+}
+
+function avoidCollisions(move, snake) {
+  for (let i = 0; i < snake.length; i++) {
+    let isSamePoint = samePoint(move, snake[i]);
+    if (isSamePoint) return false;
+  }
+  return true;
 }
 
 function getOtherSnakes({ snakes }, { body: self}) {
@@ -59,32 +74,18 @@ function getOtherSnakes({ snakes }, { body: self}) {
 }
 
 function getPossibleMoves(board, you) {
-  const { width, height } = board;
   const otherSnakes = getOtherSnakes(board, you);
-  const moves = getPossibleDirections(you);
+  const moves = getPossibleDirections(board, you);
   
   return moves.filter((move) => {
-    // Remove moves that fall outside of board boundaries
-    if (move.x < 0 || move.x >= width || move.y < 0 || move.y >= height) {
-      return false;
-    }
-
-    // // Remove moves that would result in self-collisions
-    for (let i = 1; i < you.body.length; i++) {
-      let isSamePoint = samePoint(move, you.body[i]);
-      if (isSamePoint) {
-        return false;
-      }
-    }
+    // Remove moves that would result in self-collisions
+    const avoidSelf = avoidCollisions(move, you.body);
+    if (!avoidSelf) return false;
 
     // Remove moves that would result in collisions with other snakes
     for (let i = 0; i < otherSnakes.length; i++) {
-      for (let j = 0; j < otherSnakes[i].body.length; j++) {
-        let isSamePoint = samePoint(move, otherSnakes[i].body[j]);
-        if (isSamePoint) {
-          return false;
-        }
-      }
+      let avoidOtherSnakes = avoidCollisions(move, otherSnakes[i].body);
+      if (!avoidOtherSnakes) return false;
     }
     
     return move;
