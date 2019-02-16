@@ -9,6 +9,7 @@ const {
   poweredByHandler
 } = require('./handlers.js')
 const util = require('util');
+const Heap = require('heap');
 
 // For deployment to Heroku, the port needs to be set using ENV, so
 // we check for the port number in process.env
@@ -44,6 +45,10 @@ function samePoint(pointA, pointB) {
 // Remove moves that fall outside of board (grid) boundaries
 function insideGrid(move, { height, width }) {
   return move.x >= 0 && move.x < width && move.y >= 0 && move.y < height;
+}
+
+function distanceToTarget(self, target) {
+  return Math.abs(self.x - target.x) + Math.abs(self.y - target.y);
 }
 
 // Return possible moves within board boundary
@@ -93,9 +98,7 @@ function getPossibleMoves(board, you) {
 }
 
 function findShortestPath(snakeHead, arr) {
-  const distances = arr.map((item) => {
-    return Math.abs(snakeHead.x - item.x) + Math.abs(snakeHead.y - item.y);
-  });
+  const distances = arr.map((item) => distanceToTarget(snakeHead, item));
 
   let min = null;
   for(let i = 0; i <= distances.length; i++) {
