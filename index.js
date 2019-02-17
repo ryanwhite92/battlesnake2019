@@ -79,7 +79,7 @@ function findRoute(board, you, target) {
   while (!minHeap.empty()) {
     let route = minHeap.pop().route;
     let endpoint = route[route.length - 1];
-    console.log(endpoint)
+
     if (samePoint(endpoint, target)) {
       return route;
     }
@@ -88,15 +88,14 @@ function findRoute(board, you, target) {
     moves.forEach((move) => {
       let newRoute = route.concat(move);
       let newScore = newRoute.length + distanceToTarget(move, target);
-
-      minHeap.push({
-        route: newRoute,
-        score: newScore
-      });
       
       let reachedNode = findReachedNodes(reachedList, move);
       if(!reachedNode || reachedNode.length > newRoute.length) {
-        storeReachedNodes(reachedList, move, newRoute)
+        minHeap.push({
+          route: newRoute,
+          score: newScore
+        });
+        storeReachedNodes(reachedList, move, newRoute);
       }
     });
   }
@@ -184,14 +183,12 @@ app.post('/move', (request, response) => {
   
   const { board, you } = request.body;
   const target = findClosestFood(you, board);
-  console.log(target);
-  // const route = findRoute(board, you, target);
-  // const move = route[1].move;
-  // console.log(move);
+  const route = findRoute(board, you, target);
+  const move = route[1].move;
 
   // // Response data
   const data = {
-    move: 'up' // one of: ['up','down','left','right']
+    move // one of: ['up','down','left','right']
   }
 
   return response.json(data)
