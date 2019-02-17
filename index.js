@@ -105,7 +105,8 @@ function findRoute(board, you, target) {
 }
 
 // Return possible moves within board boundary
-function getPossibleDirections(board, you, snakeHead) {
+function getPossibleDirections(board, you, node) {
+  const snakeHead = node;
   const otherSnakes = getOtherSnakes(board, you);
   const moves = [
     { x: snakeHead.x, y: snakeHead.y + 1, move: 'down' },
@@ -130,18 +131,38 @@ function getPossibleDirections(board, you, snakeHead) {
   });
 }
 
-function findClosestFood(snakeHead, arr) {
-  const distances = arr.map((item) => distanceToTarget(snakeHead, item));
+// find closest reachable food node via BFS
+function findClosestFood(you, board) {
+  const queue = [];
+  const visited = [];
 
-  let min = null;
-  for(let i = 0; i <= distances.length; i++) {
-    if (min === null || distances[i] < min) {
-      min = distances[i];
+  queue.push(you.body[0]);
+  while(queue.length) {
+    let isVisited = false;
+    let node = queue.shift();
+    
+    for(let i = 0; i < visited.length; i++) {
+      if(samePoint(node, visited[i])) {
+        isVisited = true;
+      }
     }
-  }
 
-  const idx = distances.indexOf(min);
-  return arr[idx];
+    if(isVisited) {
+      continue;
+    }
+    visited.push(node);
+
+    for(let i = 0; i < board.food.length; i++) {
+      if(samePoint(node, board.food[i])) {
+        return node;
+      }
+    }
+
+    let moves = getPossibleDirections(board, you, node);
+    moves.forEach((move) => queue.push(move));
+
+  }
+  return null;
 }
 
 // Handle POST request to '/start'
@@ -162,13 +183,15 @@ app.post('/move', (request, response) => {
   // const nextMove = calcMove(request.body);
   
   const { board, you } = request.body;
-  const target = findClosestFood(you.body[0], board.food);
-  const route = findRoute(board, you, target);
-  const move = route[1].move;
+  const target = findClosestFood(you, board);
+  console.log(target);
+  // const route = findRoute(board, you, target);
+  // const move = route[1].move;
+  // console.log(move);
 
   // // Response data
   const data = {
-    move // one of: ['up','down','left','right']
+    move: 'up' // one of: ['up','down','left','right']
   }
 
   return response.json(data)
