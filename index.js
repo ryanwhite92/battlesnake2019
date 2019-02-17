@@ -22,22 +22,6 @@ app.use(bodyParser.json())
 app.use(poweredByHandler)
 
 // --- SNAKE LOGIC GOES BELOW THIS LINE ---
-function calcMove({ board, you }) {
-  const snakeHead = you.body[0];
-
-  const possibleMoves = getPossibleMoves(board, you);
-  const target = findShortestPath(snakeHead, board.food);               // find closest food node
-  const nextMove = findShortestPath(target, possibleMoves);             // find move resulting in shortest path to get to target node
-  
-  const xDir = snakeHead.x - nextMove.x;                                // determine x direction (left/right)
-  const yDir = snakeHead.y - nextMove.y;                                // determine y direction (up/down)
-
-  if (xDir > 0) return 'left';
-  if (xDir < 0) return 'right';
-  if (yDir > 0) return 'up';
-  if (yDir < 0) return 'down';
-}
-
 function samePoint(pointA, pointB) {
   return pointA.x === pointB.x && pointA.y === pointB.y;
 }
@@ -51,19 +35,6 @@ function distanceToTarget(self, target) {
   return Math.abs(self.x - target.x) + Math.abs(self.y - target.y);
 }
 
-// Return possible moves within board boundary
-function getPossibleDirections(board, you) {
-  const snakeHead = you.body[0];
-  const moves = [
-    { x: snakeHead.x, y: snakeHead.y + 1 },
-    { x: snakeHead.x, y: snakeHead.y - 1 },
-    { x: snakeHead.x + 1, y: snakeHead.y },
-    { x: snakeHead.x - 1, y: snakeHead.y },
-  ];
-
-  return moves.filter((move) => insideGrid(move, board) ? move : false );
-}
-
 function avoidCollisions(move, snake) {
   for (let i = 0; i < snake.length; i++) {
     let isSamePoint = samePoint(move, snake[i]);
@@ -72,32 +43,94 @@ function avoidCollisions(move, snake) {
   return true;
 }
 
-function getOtherSnakes({ snakes }, { body: self}) {
+function getOtherSnakes({ snakes }, { body: self }) {
   return snakes.filter((snake) => {
     if (!util.isDeepStrictEqual(self, snake.body)) return snake;
   });
 }
 
-function getPossibleMoves(board, you) {
-  const otherSnakes = getOtherSnakes(board, you);
-  const moves = getPossibleDirections(board, you);
-  
-  return moves.filter((move) => {
-    // Remove moves that would result in self-collisions
-    const avoidSelf = avoidCollisions(move, you.body);
-    if (!avoidSelf) return false;
+// ID used as key to store node in reachedList object
+function nodeID(node) {
+  return `${node.x},${node.y}`;
+}
 
-    // Remove moves that would result in collisions with other snakes
-    for (let i = 0; i < otherSnakes.length; i++) {
-      let avoidOtherSnakes = avoidCollisions(move, otherSnakes[i].body);
-      if (!avoidOtherSnakes) return false;
+function storeReachedNodes(list, node, route) {
+  const id = nodeID(node);
+  return list[id] = route;
+}
+
+function findReachedNodes(list, node) {
+  const id = nodeID(node);
+  return list[id];
+}
+
+// Implement A* pathfinding algorithm to find best route
+function findRoute(board, you, target) {
+  const snakeHead = you.body[0];
+  const minHeap = new Heap((a, b) => a.score - b.score);       // smallest element will `pop()` first
+  const reachedList = {};
+
+  minHeap.push({ 
+    route: [snakeHead], 
+    score: distanceToTarget(snakeHead, target) 
+  });
+  reachedList[nodeID(snakeHead)] = [snakeHead];
+
+  while (!minHeap.empty()) {
+    let route = minHeap.pop().route;
+    let endpoint = route[route.length - 1];
+    console.log(endpoint)
+    if (samePoint(endpoint, target)) {
+      return route;
     }
-    
+
+    let moves = getPossibleDirections(board, you, endpoint);
+    moves.forEach((move) => {
+      let newRoute = route.concat(move);
+      let newScore = newRoute.length + distanceToTarget(move, target);
+
+      minHeap.push({
+        route: newRoute,
+        score: newScore
+      });
+      
+      let reachedNode = findReachedNodes(reachedList, move);
+      if(!reachedNode || reachedNode.length > newRoute.length) {
+        storeReachedNodes(reachedList, move, newRoute)
+      }
+    });
+  }
+
+  return null;
+}
+
+// Return possible moves within board boundary
+function getPossibleDirections(board, you, snakeHead) {
+  const otherSnakes = getOtherSnakes(board, you);
+  const moves = [
+    { x: snakeHead.x, y: snakeHead.y + 1, move: 'down' },
+    { x: snakeHead.x, y: snakeHead.y - 1, move: 'up' },
+    { x: snakeHead.x + 1, y: snakeHead.y, move: 'right' },
+    { x: snakeHead.x - 1, y: snakeHead.y, move: 'left' },
+  ];
+
+  return moves.filter((move) => {
+    if (!insideGrid(move, board)) {
+      return false;
+    } 
+    if(!avoidCollisions(move, you.body)) {
+      return false;
+    }
+    for (let i = 0; i < otherSnakes.length; i++) {
+      if(avoidCollisions(move, otherSnakes[i].body)) {
+        return false;
+      }
+    }
     return move;
   });
 }
 
-function findShortestPath(snakeHead, arr) {
+function findClosestFood(snakeHead, arr) {
   const distances = arr.map((item) => distanceToTarget(snakeHead, item));
 
   let min = null;
@@ -126,11 +159,16 @@ app.post('/start', (request, response) => {
 // Handle POST request to '/move'
 app.post('/move', (request, response) => {
   // NOTE: Do something here to generate your move
-  const nextMove = calcMove(request.body);
+  // const nextMove = calcMove(request.body);
   
-  // Response data
+  const { board, you } = request.body;
+  const target = findClosestFood(you.body[0], board.food);
+  const route = findRoute(board, you, target);
+  const move = route[1].move;
+
+  // // Response data
   const data = {
-    move: nextMove // one of: ['up','down','left','right']
+    move // one of: ['up','down','left','right']
   }
 
   return response.json(data)
