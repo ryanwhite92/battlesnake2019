@@ -8,8 +8,6 @@ const {
   genericErrorHandler,
   poweredByHandler
 } = require('./handlers.js')
-const util = require('util');
-const Heap = require('heap');
 
 // For deployment to Heroku, the port needs to be set using ENV, so
 // we check for the port number in process.env
@@ -35,18 +33,14 @@ function distanceToTarget(self, target) {
   return Math.abs(self.x - target.x) + Math.abs(self.y - target.y);
 }
 
-function avoidCollisions(move, snake) {
-  for (let i = 0; i < snake.length; i++) {
-    let isSamePoint = samePoint(move, snake[i]);
-    if (isSamePoint) return false;
+function avoidCollisions(move, { snakes }) {
+  for (let i = 0; i < snakes.length; i++) {
+    let snake = snakes[i].body;
+    for (let j = 0; j < snake.length; j++) {
+      if (samePoint(move, snake[j])) return false;
+    }
   }
   return true;
-}
-
-function getOtherSnakes({ snakes }, { body: self }) {
-  return snakes.filter((snake) => {
-    if (!util.isDeepStrictEqual(self, snake.body)) return snake;
-  });
 }
 
 // ID used as key to store node in reachedList object
@@ -67,7 +61,6 @@ function findReachedNodes(list, node) {
 // Return possible moves within board boundary
 function getPossibleDirections(board, you, node) {
   const snakeHead = node;
-  const otherSnakes = getOtherSnakes(board, you);
   const moves = [
     { x: snakeHead.x, y: snakeHead.y + 1, move: 'down' },
     { x: snakeHead.x, y: snakeHead.y - 1, move: 'up' },
@@ -78,15 +71,12 @@ function getPossibleDirections(board, you, node) {
   return moves.filter((move) => {
     if (!insideGrid(move, board)) {
       return false;
-    } 
-    if(!avoidCollisions(move, you.body)) {
+    }
+
+    if(!avoidCollisions(move, board)) {
       return false;
     }
-    for (let i = 0; i < otherSnakes.length; i++) {
-      if(!avoidCollisions(move, otherSnakes[i].body)) {
-        return false;
-      }
-    }
+
     return move;
   });
 }
@@ -151,7 +141,7 @@ app.post('/move', (request, response) => {
   // NOTE: Do something here to generate your move  
   const { board, you } = request.body;
   const target = findClosestFood(you, board);
-  // console.log(target);
+  console.log(target);
   const move = target[0].move
 
   // // Response data
