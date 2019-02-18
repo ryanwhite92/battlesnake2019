@@ -64,45 +64,6 @@ function findReachedNodes(list, node) {
   return list[id];
 }
 
-// Implement A* pathfinding algorithm to find best route
-function findRoute(board, you, target) {
-  const snakeHead = you.body[0];
-  const minHeap = new Heap((a, b) => a.score - b.score);       // smallest element will `pop()` first
-  const reachedList = {};
-
-  minHeap.push({ 
-    route: [snakeHead], 
-    score: distanceToTarget(snakeHead, target) 
-  });
-  reachedList[nodeID(snakeHead)] = [snakeHead];
-
-  while (!minHeap.empty()) {
-    let route = minHeap.pop().route;
-    let endpoint = route[route.length - 1];
-
-    if (samePoint(endpoint, target)) {
-      return route;
-    }
-
-    let moves = getPossibleDirections(board, you, endpoint);
-    moves.forEach((move) => {
-      let newRoute = route.concat(move);
-      let newScore = newRoute.length + distanceToTarget(move, target);
-      
-      let reachedNode = findReachedNodes(reachedList, move);
-      if(!reachedNode || reachedNode.length > newRoute.length) {
-        minHeap.push({
-          route: newRoute,
-          score: newScore
-        });
-        storeReachedNodes(reachedList, move, newRoute);
-      }
-    });
-  }
-
-  return null;
-}
-
 // Return possible moves within board boundary
 function getPossibleDirections(board, you, node) {
   const snakeHead = node;
@@ -122,7 +83,7 @@ function getPossibleDirections(board, you, node) {
       return false;
     }
     for (let i = 0; i < otherSnakes.length; i++) {
-      if(avoidCollisions(move, otherSnakes[i].body)) {
+      if(!avoidCollisions(move, otherSnakes[i].body)) {
         return false;
       }
     }
@@ -130,18 +91,22 @@ function getPossibleDirections(board, you, node) {
   });
 }
 
-// find closest reachable food node via BFS
+// find route to closest reachable food node via BFS
 function findClosestFood(you, board) {
   const queue = [];
   const visited = [];
 
-  queue.push(you.body[0]);
+  queue.push({
+    pos: you.body[0],
+    route: []
+  });
+
   while(queue.length) {
     let isVisited = false;
     let node = queue.shift();
     
     for(let i = 0; i < visited.length; i++) {
-      if(samePoint(node, visited[i])) {
+      if(samePoint(node.pos, visited[i])) {
         isVisited = true;
       }
     }
@@ -149,16 +114,21 @@ function findClosestFood(you, board) {
     if(isVisited) {
       continue;
     }
-    visited.push(node);
+    visited.push(node.pos);
 
     for(let i = 0; i < board.food.length; i++) {
-      if(samePoint(node, board.food[i])) {
-        return node;
+      if(samePoint(node.pos, board.food[i])) {
+        return node.route;
       }
     }
 
-    let moves = getPossibleDirections(board, you, node);
-    moves.forEach((move) => queue.push(move));
+    let moves = getPossibleDirections(board, you, node.pos);
+    moves.forEach((move) => {
+      queue.push({
+        pos: move,
+        route: node.route.concat(move)
+      });
+    });
 
   }
   return null;
@@ -178,13 +148,11 @@ app.post('/start', (request, response) => {
 
 // Handle POST request to '/move'
 app.post('/move', (request, response) => {
-  // NOTE: Do something here to generate your move
-  // const nextMove = calcMove(request.body);
-  
+  // NOTE: Do something here to generate your move  
   const { board, you } = request.body;
   const target = findClosestFood(you, board);
-  const route = findRoute(board, you, target);
-  const move = route[1].move;
+  // console.log(target);
+  const move = target[0].move
 
   // // Response data
   const data = {
