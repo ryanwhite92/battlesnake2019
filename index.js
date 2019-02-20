@@ -8,6 +8,7 @@ const {
   genericErrorHandler,
   poweredByHandler
 } = require('./handlers.js')
+const Heap = require('heap');
 
 // For deployment to Heroku, the port needs to be set using ENV, so
 // we check for the port number in process.env
@@ -79,6 +80,45 @@ function getPossibleDirections(board, you, node) {
 
     return move;
   });
+}
+
+// Implement A* pathfinding algorithm to find best route
+function findRoute(board, you, target) {
+  const snakeHead = you.body[0];
+  const minHeap = new Heap((a, b) => a.score - b.score);       // smallest element will `pop()` first
+  const reachedList = {};
+
+  minHeap.push({ 
+    route: [snakeHead], 
+    score: distanceToTarget(snakeHead, target) 
+  });
+  reachedList[nodeID(snakeHead)] = [snakeHead];
+
+  while (!minHeap.empty()) {
+    let route = minHeap.pop().route;
+    let endpoint = route[route.length - 1];
+
+    if (samePoint(endpoint, target)) {
+      return route;
+    }
+
+    let moves = getPossibleDirections(board, you, endpoint);
+    moves.forEach((move) => {
+      let newRoute = route.concat(move);
+      let newScore = newRoute.length + distanceToTarget(move, target);
+
+      let reachedNode = findReachedNodes(reachedList, move);
+      if(!reachedNode || reachedNode.length > newRoute.length) {
+        minHeap.push({
+          route: newRoute,
+          score: newScore
+        });
+        storeReachedNodes(reachedList, move, newRoute);
+      }
+    });
+  }
+
+  return null;
 }
 
 // find route to closest reachable food node via BFS
