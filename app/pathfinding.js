@@ -1,3 +1,4 @@
+const util = require('util');
 const Heap = require('heap');
 
 function samePoint(pointA, pointB) {
@@ -20,7 +21,7 @@ function avoidCollisions(move, { snakes }) {
 }
 
 // Return possible moves within board boundary
-function getPossibleDirections(board, you, node) {
+function getPossibleMoves(board, node) {
   const snakeHead = node;
   const moves = [
     { x: snakeHead.x, y: snakeHead.y + 1, move: 'down' },
@@ -63,8 +64,8 @@ function findReachedNodes(list, node) {
 }
 
 // Implement A* pathfinding algorithm to find best route
-function findRoute(board, you, target) {
-  const snakeHead = you.body[0];
+function findRoute(board, snake, target) {
+  const snakeHead = snake.body[0];
   const minHeap = new Heap((a, b) => a.score - b.score);       // smallest element will `pop()` first
   const reached = {};
 
@@ -82,7 +83,7 @@ function findRoute(board, you, target) {
       return route;
     }
 
-    let moves = getPossibleDirections(board, you, endpoint);
+    let moves = getPossibleMoves(board, endpoint);
     moves.forEach((move) => {
       let newRoute = route.concat(move);
       let newScore = newRoute.length + distanceToTarget(move, target);
@@ -101,50 +102,23 @@ function findRoute(board, you, target) {
   return null;
 }
 
-// find route to closest reachable food node via BFS
-function findClosestFood(you, board) {
-  const queue = [];
-  const visited = [];
+function findClosestFood(board, you) {
+  const foodArr = board.food;
+  let bestPath = null;
 
-  queue.push({
-    pos: you.body[0],
-    route: []
+  foodArr.forEach((food) => {
+    const path = findRoute(board, you, food);
+    if(!path) return;
+    if(!bestPath || path.length < bestPath.length) {
+      bestPath = path;
+    }
   });
 
-  while(queue.length) {
-    let isVisited = false;
-    let node = queue.shift();
-    
-    for(let i = 0; i < visited.length; i++) {
-      if(samePoint(node.pos, visited[i])) {
-        isVisited = true;
-      }
-    }
-
-    if(isVisited) {
-      continue;
-    }
-    visited.push(node.pos);
-
-    for(let i = 0; i < board.food.length; i++) {
-      if(samePoint(node.pos, board.food[i])) {
-        return node.route;
-      }
-    }
-
-    let moves = getPossibleDirections(board, you, node.pos);
-    moves.forEach((move) => {
-      queue.push({
-        pos: move,
-        route: node.route.concat(move)
-      });
-    });
-
-  }
-  return null;
+  return bestPath ? bestPath : null;
 }
 
 module.exports = {
   findRoute,
-  findClosestFood
+  findClosestFood,
+  getPossibleMoves
 };
