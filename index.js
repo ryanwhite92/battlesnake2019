@@ -21,6 +21,20 @@ app.use(bodyParser.json())
 app.use(poweredByHandler)
 
 // --- SNAKE LOGIC GOES BELOW THIS LINE ---
+function foodPath(board, you) {
+  return pathfinding.findClosestFood(board, you);
+}
+
+// Last resort to stay alive
+function survive(board, you) {
+  const snakeHead = you.body[0];
+  return pathfinding.getPossibleMoves(board, snakeHead);
+}
+
+function chaseTail(board, you) {
+  const tail = you.body[you.body.length - 1];
+  return pathfinding.findRoute(board, you, tail);
+}
 
 // Handle POST request to '/start'
 app.post('/start', (request, response) => {
@@ -38,15 +52,18 @@ app.post('/start', (request, response) => {
 app.post('/move', (request, response) => {
   // NOTE: Do something here to generate your move  
   const { board, you } = request.body;
-  const tail = you.body[you.body.length - 1];
-  let target;
+  let target = null;
 
   if (you.health > 50) {
-    target = pathfinding.findRoute(board, you, tail); // chase tail
+    target = chaseTail(board, you);
   } 
 
   if(!target || you.health <= 50) {
-    target = pathfinding.findClosestFood(you, board); // will return null if snake circles in on itself and no food is inside
+    target = foodPath(board, you);
+  }
+
+  if(!target) {
+    target = survive(board, you);
   }
 
   console.log('target', target);
