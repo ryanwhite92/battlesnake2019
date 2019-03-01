@@ -102,6 +102,24 @@ function findRoute(board, snake, target) {
   return null;
 }
 
+function closestToFood(board, you, target) {
+  const enemySnakes = board.snakes.filter((snake) => {
+    return !util.isDeepStrictEqual(you.body, snake.body) ? snake : false;
+  });
+
+  let path = findRoute(board, you, target);
+  console.log('closest path =>', path);
+  for(let i = 0; i < enemySnakes.length; i++) {
+    let enemyPath = findRoute(board, enemySnakes[i], target);
+    if(!enemyPath) continue;
+    if(path.length > enemyPath.length) { // can maybe do a check here for snake length as well, and refactor this and below function
+      return false;
+    }
+  }
+  return path;
+}
+
+// returns the closest food node
 function findClosestFood(board, you) {
   const foodArr = board.food;
   let bestPath = null;
@@ -114,11 +132,12 @@ function findClosestFood(board, you) {
     }
   });
 
-  return bestPath ? bestPath : null;
+  return (bestPath) ? bestPath[bestPath.length - 1] : null;
 }
 
 module.exports = {
   findRoute,
   findClosestFood,
-  getPossibleMoves
+  getPossibleMoves,
+  closestToFood
 };

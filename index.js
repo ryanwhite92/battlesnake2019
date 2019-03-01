@@ -22,7 +22,10 @@ app.use(poweredByHandler)
 
 // --- SNAKE LOGIC GOES BELOW THIS LINE ---
 function foodPath(board, you) {
-  return pathfinding.findClosestFood(board, you);
+  const food = pathfinding.findClosestFood(board, you);
+  if(!food) return null;
+
+  return pathfinding.closestToFood(board, you, food);
 }
 
 // Last resort to stay alive
@@ -53,20 +56,16 @@ app.post('/move', (request, response) => {
   // NOTE: Do something here to generate your move  
   const { board, you } = request.body;
   let target = null;
+  target = foodPath(board, you);
 
-  if (you.health > 50) {
+  if (!target) {
     target = chaseTail(board, you);
   } 
-
-  if(!target || you.health <= 50) {
-    target = foodPath(board, you);
-  }
 
   if(!target) {
     target = survive(board, you);
   }
 
-  console.log('target', target);
   const move = target[0].move;
 
   // // Response data
