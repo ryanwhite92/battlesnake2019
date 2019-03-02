@@ -28,6 +28,19 @@ function foodPath(board, you) {
   return pathfinding.closestToFood(board, you, food);
 }
 
+function isLongest(board, you) {
+  const enemySnakes = board.snakes.filter((snake) => {
+    return !util.isDeepStrictEqual(you.body, snake.body) ? snake : false;
+  });
+
+  for(let i = 0; i < enemySnakes.length; i++) {
+    if(enemySnakes[i].body.length >= you.body.length) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Last resort to stay alive
 function survive(board, you) {
   const snakeHead = you.body[0];
@@ -56,7 +69,10 @@ app.post('/move', (request, response) => {
   // NOTE: Do something here to generate your move  
   const { board, you } = request.body;
   let target = null;
-  target = foodPath(board, you);
+  
+  if(you.health < 35 || !isLongest(board, you)) {
+    target = foodPath(board, you);
+  }
 
   if (!target) {
     target = chaseTail(board, you);

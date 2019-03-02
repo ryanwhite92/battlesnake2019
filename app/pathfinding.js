@@ -97,6 +97,10 @@ function findRoute(board, snake, target) {
         storeReachedNodes(reached, move, newRoute);
       }
     });
+    // return longest route
+    if(minHeap.empty()) {
+      return route;
+    }
   }
 
   return null;
@@ -108,11 +112,10 @@ function closestToFood(board, you, target) {
   });
 
   let path = findRoute(board, you, target);
-  console.log('closest path =>', path);
   for(let i = 0; i < enemySnakes.length; i++) {
     let enemyPath = findRoute(board, enemySnakes[i], target);
     if(!enemyPath) continue;
-    if(path.length > enemyPath.length) { // can maybe do a check here for snake length as well, and refactor this and below function
+    if(enemyPath.length <= path.length && you.body.length < enemySnakes[i].body.length) {
       return false;
     }
   }
